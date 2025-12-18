@@ -77,23 +77,21 @@
 
     </div>
 
-    <dialog id="meuModal">
+   <dialog id="meuModal">
         <div class="modal-header">
-
             <h1>Adicionar Álbum novo</h1>
             <button id="fecharModalBtn">&times;</button>
         </div>
-        <div class="modal-body">
-            <section class="inputs">
-                <div class="ip-int">
-                    <label for="Titulo">Título do álbum</label>
-                    <input type="text" id="Titulo" placeholder="Digite o título">
-                </div>
-                <div class="ip-int">
-                    <label for="">Data</label>
-                    <input type="text" id="Data" placeholder="Digite a data">
-                </div>
-            </section>
+
+        <p>Título</p>
+        <input type="text" id="Titulo" placeholder="Digite o título">
+
+        <p>Data</p>
+        <input type="text" id="Data" placeholder="Digite a data">
+
+        <!-- Área da imagem -->
+        <div class="image-upload-area">
+            <img src="/img/adicionar.png" alt="Adicionar imagem" class="img-add">
         </div>
 
         <div class="modal-footer">
