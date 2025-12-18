@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Registros</title>
+    <title>Registros</title>
     <link rel="stylesheet" href="/css/regs.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <img class="imgr" src="">
-   <nav>
+
+     <nav>
         <div class="bar">
             <ul>
                 <img id="logo" src="/img/logo.png">
@@ -17,33 +17,41 @@
                     Home
                 </a>
 
-                <a id="hm" href="Registros.html">
+                <a id="hm" id="rg" href="Registros.html">
                     Atendimentos
                 </a>
 
-                <a href="/docs/Galeria.html">
+                <a  href="/docs/Galeria.html">
                     Galeria
                 </a>
 
                 <div class="perf">
                     <a id="lgn" href="login.html">Logout</a>
+                    <img class="perfil" src="/img/perfil.png">
                 </div>
 
             </ul>
         </div>
     </nav>
 
+    <header>
+        <h1>Dashboard de Registros</h1>
+        <p>Visualização geral dos registros cadastrados</p>
+    </header>
+
     </header>
     <section class="filter-box">
         <label for="tipo">Filtrar por tipo:</label>
-
         <select id="tipo">
             <option value="todos">Todos</option>
             <option value="pacientes">Pacientes</option>
             <option value="consultas">Consultas</option>
             <option value="atendimentos">Atendimentos</option>
         </select>
-        <a class="btn" href="novoRegistro.html" style="margin-left:8px;">Novo registro</a>
+        <div class="search-box">
+            <input id="searchInput" type="search" placeholder="Pesquisar por nome ou CPF" aria-label="Pesquisar por nome ou CPF" />
+        </div>
+        <a class="btn btn-register" href="/docs/novoRegistro.html">Novo Registro</a>
     </section>
 
     <section class="cards">
@@ -74,37 +82,293 @@
                     <th>Nome</th>
                     <th>Data</th>
                     <th>Status</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
 
-            <tbody>
-                <tr>
-                    <td>#001</td>
-                    <td>Paciente</td>
-                    <td>Ana Bezerra</td>
-                    <td>20/11/2025</td>
-                    <td class="status ativo">Ativo</td>
-                </tr>
-
-                <tr>
-                    <td>#002</td>
-                    <td>Consulta</td>
-                    <td>Carlos Souza</td>
-                    <td>19/11/2025</td>
-                    <td class="status pendente">Pendente</td>
-                </tr>
-
-                <tr>
-                    <td>#003</td>
-                    <td>Atendimento</td>
-                    <td>Maria Silva</td>
-                    <td>18/11/2025</td>
-                    <td class="status concluido">Concluído</td>
-
-                </tr>
+            <tbody id="recordsBody">
+                <!-- registros carregados via JavaScript -->
             </tbody>
         </table>
     </section>
 
+        <!-- Modal de detalhes do paciente -->
+        <div id="detailModal" class="modal">
+            <div class="modal-content">
+                <button id="modalClose" class="modal-close">×</button>
+                        <h3 id="modalName">Nome do paciente</h3>
+                        <p><strong>ID:</strong> <span id="modalId"></span></p>
+                        <p><strong>Data:</strong> <span id="modalDate"></span></p>
+                        <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+                        <hr />
+                        <div id="modalBody">
+                            <div id="modalDescription" class="modal-section visible">Descrição do paciente...</div>
+                            <div id="modalEditForm" class="modal-section hidden">
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <input id="edit_name" type="text" placeholder="Nome" />
+                                    <input id="edit_nascimento" type="date" />
+                                    <input id="edit_cpf" type="text" placeholder="CPF" />
+                                    <textarea id="edit_observacoes" rows="4" placeholder="Observações"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-actions" style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
+                            <button id="markCompleteBtn" class="btn">Marcar como Concluído</button>
+                            <button id="editBtn" class="btn btn-outline">Editar</button>
+                            <button id="deleteBtn" class="btn" style="background:#ffb4b4;border-color:rgba(0,0,0,0.06);">Excluir</button>
+                        </div>
+                        <div id="editActions" style="display:none;margin-top:8px;justify-content:flex-end;display:flex;gap:8px;">
+                            <button id="saveEditBtn" class="btn">Salvar alterações</button>
+                            <button id="cancelEditBtn" class="btn btn-outline">Cancelar</button>
+                        </div>
+            </div>
+        </div>
+        <!-- toast -->
+        <div id="toast" class="toast" aria-live="polite" role="status" style="display:none;"></div>
+        <script>
+            // renderizar registros salvos e exemplos estáticos
+            function renderRecords(){
+                const tbody = document.getElementById('recordsBody');
+                tbody.innerHTML = '';
+                const patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                // pacientes salvos aparecem primeiro
+                    patients.forEach(p => {
+                        const tr = document.createElement('tr');
+                        const statusClass = (p.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
+                    tr.innerHTML = `
+                        <td>${p.id}</td>
+                        <td>Paciente</td>
+                        <td>${p.name}</td>
+                        <td>${p.nascimento || new Date(p.createdAt).toLocaleDateString()}</td>
+                        <td class="status ${statusClass}">${p.status}</td>
+                        <td><button class="btn details-btn" data-patient-id="${p.id}">Detalhes</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // exemplos estáticos (mantidos para contexto)
+                const examples = [
+                    {id:'#002', tipo:'Consulta', name:'Carlos Souza', date:'19/11/2025', status:'Pendente', desc:'Consulta de retorno sobre medicação contínua.'},
+                    {id:'#003', tipo:'Atendimento', name:'Maria Silva', date:'18/11/2025', status:'Concluído', desc:'Atendimento finalizado com encaminhamento para fisioterapia.'}
+                ];
+                examples.forEach(e => {
+                    const tr = document.createElement('tr');
+                    const escStatus = (e.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
+                    tr.innerHTML = `
+                        <td>${e.id}</td>
+                        <td>${e.tipo}</td>
+                        <td>${e.name}</td>
+                        <td>${e.date}</td>
+                        <td class="status ${escStatus}">${e.status}</td>
+                        <td><button class="btn details-btn" data-id="${e.id}" data-name="${e.name}" data-date="${e.date}" data-status="${e.status}" data-description="${e.desc}">Detalhes</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                attachDetailsHandlers();
+            }
+
+            // gerar descrição detalhada a partir do objeto paciente
+            function formatPatientDescription(p){
+                const lines = [];
+                lines.push(`<strong>Nome:</strong> ${p.name}`);
+                if(p.cpf) lines.push(`<strong>CPF:</strong> ${p.cpf}`);
+                if(p.nascimento) lines.push(`<strong>Data Nasc.:</strong> ${p.nascimento}`);
+                lines.push(`<strong>Status:</strong> ${p.status}`);
+                if(p.pcd) lines.push(`<strong>PCD:</strong> Sim`);
+                if(p.medicacao) lines.push(`<strong>Medicação contínua:</strong> Sim`);
+                if(p.acompanhamento) lines.push(`<strong>Acompanhamento:</strong> Sim`);
+                if(p.adaptacao) lines.push(`<strong>Adaptação:</strong> ${p.adaptacaoDetalhe || '—'}`);
+                if(p.dificuldade) lines.push(`<strong>Dificuldade aprendizagem:</strong> ${p.dificuldadeDetalhe || '—'}`);
+                if(p.reprovacoes) lines.push(`<strong>Reprovações:</strong> ${p.reprovacoesDetalhe || '—'}`);
+                if(p.abandono) lines.push(`<strong>Abandono:</strong> ${p.abandonoDetalhe || '—'}`);
+                if(p.malestar) lines.push(`<strong>Mal-estar psicológico:</strong> ${p.malestarDetalhe || '—'}`);
+                if(p.crises) lines.push(`<strong>Crises familiares:</strong> ${p.crisesDetalhe || '—'}`);
+                if(p.observacoes) lines.push(`<strong>Observações:</strong> ${p.observacoes}`);
+                lines.push(`<small>Registrado em: ${new Date(p.createdAt).toLocaleString()}</small>`);
+                return lines.join('<br>');
+            }
+
+            
+
+            // toast helper
+            const toastEl = document.getElementById('toast');
+            function showToast(msg, type='success', ms=2200){
+                toastEl.textContent = msg;
+                toastEl.className = 'toast ' + (type||'info') + ' visible';
+                toastEl.style.display = '';
+                setTimeout(()=>{ toastEl.classList.remove('visible'); setTimeout(()=> toastEl.style.display='none', 160); }, ms);
+            }
+
+            // modal open/close functions reused
+            const modal = document.getElementById('detailModal');
+                const modalDescription = document.getElementById('modalDescription');
+                const modalEditForm = document.getElementById('modalEditForm');
+            const editActions = document.getElementById('editActions');
+            const markCompleteBtn = document.getElementById('markCompleteBtn');
+            const editBtn = document.getElementById('editBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const saveEditBtn = document.getElementById('saveEditBtn');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+            const openModal = () => { modal.style.display = 'flex'; requestAnimationFrame(()=> modal.classList.add('open')); };
+            const closeModal = () => { modal.classList.remove('open'); setTimeout(()=> modal.style.display = 'none', 220); exitEditMode(); };
+            document.getElementById('modalClose').addEventListener('click', closeModal);
+            modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+
+            let currentPatientId = null;
+
+            // mark complete
+            function markPatientComplete(id){
+                console.log('[dashboard] markPatientComplete', id);
+                const patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                const p = patients.find(x=>x.id===id);
+                if(!p) return;
+                p.status = 'Concluído';
+                localStorage.setItem('patients', JSON.stringify(patients));
+                renderRecords();
+                // update modal
+                document.getElementById('modalStatus').textContent = p.status;
+                showToast('Status atualizado para Concluído', 'success');
+            }
+
+            // delete
+            function deletePatient(id){
+                if(!confirm('Excluir este registro? Esta ação não pode ser desfeita.')) return false;
+                let patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                patients = patients.filter(x=>x.id!==id);
+                localStorage.setItem('patients', JSON.stringify(patients));
+                renderRecords();
+                closeModal();
+                showToast('Registro excluído', 'warn');
+                return true;
+            }
+
+            // edit mode helpers
+            function enterEditMode(p){
+                console.log('[dashboard] enterEditMode', p && p.id);
+                currentPatientId = p.id;
+                // animate transition: hide description, show edit form
+                modalDescription.classList.remove('visible');
+                modalDescription.classList.add('hidden');
+                setTimeout(()=>{
+                    modalEditForm.classList.remove('hidden');
+                    modalEditForm.classList.add('visible');
+                }, 160);
+                editActions.style.display = 'flex';
+                // populate fields
+                document.getElementById('edit_name').value = p.name || '';
+                document.getElementById('edit_nascimento').value = p.nascimento || '';
+                document.getElementById('edit_cpf').value = p.cpf || '';
+                document.getElementById('edit_observacoes').value = p.observacoes || '';
+            }
+
+            function exitEditMode(){
+                currentPatientId = null;
+                // reverse animation
+                modalEditForm.classList.remove('visible');
+                modalEditForm.classList.add('hidden');
+                setTimeout(()=>{
+                    modalDescription.classList.remove('hidden');
+                    modalDescription.classList.add('visible');
+                }, 120);
+                editActions.style.display = 'none';
+            }
+
+            function saveEdit(){
+                console.log('[dashboard] saveEdit', currentPatientId);
+                if(!currentPatientId) return;
+                const patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                const p = patients.find(x=>x.id===currentPatientId);
+                if(!p) return;
+                p.name = document.getElementById('edit_name').value.trim() || p.name;
+                p.nascimento = document.getElementById('edit_nascimento').value || p.nascimento;
+                p.cpf = document.getElementById('edit_cpf').value.trim() || p.cpf;
+                p.observacoes = document.getElementById('edit_observacoes').value.trim() || p.observacoes;
+                localStorage.setItem('patients', JSON.stringify(patients));
+                // update modal display
+                document.getElementById('modalName').textContent = p.name;
+                modalDescription.innerHTML = formatPatientDescription(p);
+                exitEditMode();
+                renderRecords();
+                showToast('Alterações salvas', 'success');
+            }
+
+            // attach edit/delete handlers for modal-level buttons
+            markCompleteBtn.addEventListener('click', ()=>{ if(currentPatientId) { markPatientComplete(currentPatientId); } });
+            deleteBtn.addEventListener('click', ()=>{ if(currentPatientId) { deletePatient(currentPatientId); } });
+            saveEditBtn.addEventListener('click', saveEdit);
+            cancelEditBtn.addEventListener('click', exitEditMode);
+
+            editBtn.addEventListener('click', ()=>{
+                if(!currentPatientId) return;
+                const patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                const p = patients.find(x=>x.id===currentPatientId);
+                if(p) enterEditMode(p);
+            });
+
+            // modify attachDetailsHandlers so it sets currentPatientId and updates buttons
+            function attachDetailsHandlers(){
+                const modalId = document.getElementById('modalId');
+                const modalName = document.getElementById('modalName');
+                const modalDate = document.getElementById('modalDate');
+                const modalStatus = document.getElementById('modalStatus');
+                const modalDescription = document.getElementById('modalDescription');
+
+                document.querySelectorAll('.details-btn').forEach(btn => {
+                    btn.removeEventListener('click', detailsClickHandler);
+                    btn.addEventListener('click', detailsClickHandler);
+                });
+
+                function detailsClickHandler(e){
+                    const btn = e.currentTarget;
+                    try{ console.log('[dashboard] detailsClickHandler', { attrs: Array.from(btn.attributes).map(a=>({name:a.name,value:a.value})) }); }catch(err){console.log('[dashboard] log error', err)}
+                    const patientId = btn.getAttribute('data-patient-id');
+                    if(patientId){
+                        const patients = JSON.parse(localStorage.getItem('patients')||'[]');
+                        const p = patients.find(x=>x.id===patientId);
+                        if(p){
+                            currentPatientId = p.id;
+                            modalId.textContent = p.id;
+                            modalName.textContent = p.name;
+                            modalDate.textContent = p.nascimento || new Date(p.createdAt).toLocaleDateString();
+                            modalStatus.textContent = p.status;
+                            modalDescription.innerHTML = formatPatientDescription(p);
+                            // ensure proper classes for animated sections
+                            modalDescription.classList.remove('hidden');
+                            modalDescription.classList.add('visible');
+                            modalEditForm.classList.remove('visible');
+                            modalEditForm.classList.add('hidden');
+                            editActions.style.display = 'none';
+                            openModal();
+                            return;
+                        }
+                    }
+                    // fallback for static buttons
+                    const id = btn.getAttribute('data-id') || '';
+                    const name = btn.getAttribute('data-name') || '';
+                    const date = btn.getAttribute('data-date') || '';
+                    const status = btn.getAttribute('data-status') || '';
+                    const desc = btn.getAttribute('data-description') || '';
+                    currentPatientId = null;
+                    modalId.textContent = id;
+                    modalName.textContent = name;
+                    modalDate.textContent = date;
+                    modalStatus.textContent = status;
+                    modalDescription.innerHTML = desc;
+                    modalDescription.classList.remove('hidden');
+                    modalDescription.classList.add('visible');
+                    modalEditForm.classList.remove('visible');
+                    modalEditForm.classList.add('hidden');
+                    editActions.style.display = 'none';
+                    openModal();
+                }
+            }
+
+            // inicializa
+            renderRecords();
+        </script>
+
 </body>
 </html>
+>

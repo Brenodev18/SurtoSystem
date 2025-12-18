@@ -248,3 +248,4 @@ input:focus{
 .save-alert.visible{ opacity:1; transform:translateY(0); }
 
 .card-actions{ margin-top:16px; display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+
